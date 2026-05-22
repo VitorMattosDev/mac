@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MAC +1 · Incrementador de MAC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0c0b;
+      --surface: #15130f;
+      --surface-2: #1d1a14;
+      --border: #2a2620;
+      --border-bright: #3a342a;
+      --text: #f5ede0;
+      --text-dim: #948a78;
+      --text-mute: #5a5448;
+      --accent: #f4a72b;
+      --accent-soft: #ffb83a;
+      --accent-glow: rgba(244, 167, 43, 0.15);
+      --error: #e8704f;
+      --success: #79c47a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Geist', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-image:
+        radial-gradient(ellipse 80% 40% at 30% -5%, var(--accent-glow), transparent 60%),
+        radial-gradient(ellipse 60% 40% at 70% 105%, rgba(244, 167, 43, 0.04), transparent 60%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 22px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .eyebrow::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    h1 {
+      font-family: 'Instrument Serif', 'Georgia', serif;
+      font-weight: 400;
+      font-size: clamp(48px, 9vw, 76px);
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      margin-bottom: 18px;
+      margin-top: 18px;
+    }
+
+    h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 15px;
+      max-width: 440px;
+      margin: 0 auto;
+      line-height: 1.55;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 14px;
+    }
+
+    .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-mute);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .label .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-mute);
+    }
+
+    /* Input */
+    #mac-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(20px, 4.5vw, 28px);
+      font-weight: 500;
+      text-align: center;
+      letter-spacing: 0.06em;
+      padding: 6px 0;
+      caret-color: var(--accent);
+    }
+
+    #mac-input::placeholder {
+      color: var(--text-mute);
+      font-weight: 400;
+    }
+
+    /* Result card */
+    .result-card {
+      background: linear-gradient(180deg, var(--surface-2), var(--surface));
+      border-color: var(--border-bright);
+      box-shadow:
+        0 0 60px var(--accent-glow),
+        inset 0 1px 0 rgba(244, 167, 43, 0.06);
+    }
+
+    .result-card .label {
+      color: var(--accent);
+    }
+
+    .result-card .label .dot {
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    #mac-output {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.06em;
+      padding: 8px 0 4px;
+      word-break: break-all;
+      min-height: 1.4em;
+    }
+
+    #mac-output .changed {
+      color: var(--accent);
+      text-shadow: 0 0 14px rgba(244, 167, 43, 0.5);
+      position: relative;
+    }
+
+    #mac-output.placeholder {
+      color: var(--text-mute);
+      font-weight: 400;
+    }
+
+    #mac-output.error {
+      color: var(--error);
+      font-size: 15px;
+      font-family: 'Geist', sans-serif;
+      font-weight: 400;
+      letter-spacing: 0;
+    }
+
+    /* Diff strip */
+    .diff {
+      margin-top: 22px;
+      padding: 14px 18px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      display: none;
+    }
+
+    .diff.visible {
+      display: block;
+    }
+
+    .diff-row {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      padding: 3px 0;
+      color: var(--text-dim);
+    }
+
+    .diff-row .tag {
+      font-size: 9.5px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      width: 38px;
+      flex-shrink: 0;
+      color: var(--text-mute);
+    }
+
+    .diff-row .value {
+      flex: 1;
+      letter-spacing: 0.05em;
+      word-break: break-all;
+    }
+
+    .diff-row .value .changed {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Copy button */
+    .copy-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 22px;
+    }
+
+    .copy-btn {
+      background: var(--accent);
+      color: #1a1100;
+      border: none;
+      font-family: 'Geist', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.01em;
+      padding: 14px 30px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 180ms ease, transform 120ms ease, box-shadow 180ms ease;
+    }
+
+    .copy-btn:hover:not(:disabled) {
+      background: var(--accent-soft);
+      transform: translateY(-1px);
+      box-shadow: 0 10px 28px rgba(244, 167, 43, 0.25);
+    }
+
+    .copy-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .copy-btn:disabled {
+      background: var(--surface-2);
+      color: var(--text-mute);
+      cursor: not-allowed;
+    }
+
+    .copy-btn.copied {
+      background: var(--success);
+      color: #0d2810;
+    }
+
+    .copy-btn svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .shortcut-hint {
+      display: block;
+      text-align: center;
+      margin-top: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      color: var(--text-mute);
+      letter-spacing: 0.08em;
+    }
+
+    .shortcut-hint kbd {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-family: inherit;
+      color: var(--text-dim);
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 56px;
+      padding-top: 28px;
+      border-top: 1px solid var(--border);
+      color: var(--text-mute);
+      font-size: 13px;
+      line-height: 1.65;
+      text-align: center;
+    }
+
+    footer strong {
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    footer code {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+    }
+
+    /* Wrap warning */
+    .wrap-warn {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: rgba(232, 112, 79, 0.08);
+      border: 1px solid rgba(232, 112, 79, 0.3);
+      border-radius: 8px;
+      font-size: 12.5px;
+      color: var(--error);
+      text-align: center;
+      display: none;
+    }
+
+    .wrap-warn.visible {
+      display: block;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 32px 18px;
+      }
+
+      .card {
+        padding: 22px 20px;
+      }
+
+      .hero {
+        margin-bottom: 40px;
+      }
+
+      footer {
+        font-size: 12.5px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="eyebrow">Provisionamento · Huawei</div>
+      <p class="subtitle">Desenvolvido por Vitor Mattos</p>
+      <h1>MAC <em>+1</em></h1>
+      <p class="subtitle">Cole o MAC original. O incremento é calculado em hexadecimal, do jeito certo.</p>
+    </header>
+
+    <div class="card">
+      <div class="label"><span class="dot"></span> MAC ORIGINAL</div>
+      <input type="text" id="mac-input" placeholder="98:48:74:D8:DE:9C" autocomplete="off" spellcheck="false"
+        autocapitalize="characters" autofocus>
+    </div>
+
+    <div class="card result-card">
+      <div class="label"><span class="dot"></span> MAC INCREMENTADO</div>
+      <div id="mac-output" class="placeholder">—</div>
+
+      <div class="diff" id="diff">
+        <div class="diff-row">
+          <span class="tag">De</span>
+          <span class="value" id="diff-in"></span>
+        </div>
+        <div class="diff-row">
+          <span class="tag">Para</span>
+          <span class="value" id="diff-out"></span>
+        </div>
+      </div>
+
+      <div class="copy-row">
+        <button id="copy-btn" class="copy-btn" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+          <span id="copy-label">Copiar MAC</span>
+        </button>
+      </div>
+      <span class="shortcut-hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para copiar</span>
+
+      <div class="wrap-warn" id="wrap-warn">
+        ⚠ O MAC era <code>FF:FF:FF:FF:FF:FF</code> e voltou para <code>00:00:00:00:00:00</code>. Verifique com o
+        supervisor antes de usar.
+      </div>
+    </div>
+
+    <footer>
+      O incremento é feito em <strong>hexadecimal de 48 bits</strong>. Quando o último dígito é <code>F</code>, o dígito
+      à esquerda também muda — exatamente como <code>...0F → ...10</code>.
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      const input = document.getElementById('mac-input');
+      const output = document.getElementById('mac-output');
+      const copyBtn = document.getElementById('copy-btn');
+      const copyLabel = document.getElementById('copy-label');
+      const diff = document.getElementById('diff');
+      const diffIn = document.getElementById('diff-in');
+      const diffOut = document.getElementById('diff-out');
+      const wrapWarn = document.getElementById('wrap-warn');
+
+      let currentResult = null;
+
+      // Always output in the canonical Huawei format: XX:XX:XX:XX:XX:XX (uppercase)
+      function formatMac(hex) {
+        hex = hex.toUpperCase();
+        const parts = [];
+        for (let i = 0; i < hex.length; i += 2) {
+          parts.push(hex.substring(i, i + 2));
+        }
+        return parts.join(':');
+      }
+
+      function diffPositions(a, b) {
+        const set = new Set();
+        for (let i = 0; i < a.length; i++) {
+          if (a[i] !== b[i]) set.add(i);
+        }
+        return set;
+      }
+
+      function renderHighlighted(formatted, changedHexIndices) {
+        let hexIdx = 0;
+        let html = '';
+        for (const ch of formatted) {
+          if (/[0-9a-fA-F]/.test(ch)) {
+            if (changedHexIndices.has(hexIdx)) {
+              html += '<span class="changed">' + ch + '</span>';
+            } else {
+              html += ch;
+            }
+            hexIdx++;
+          } else {
+            html += ch;
+          }
+        }
+        return html;
+      }
+
+      function incrementMac(raw) {
+        const cleaned = raw.replace(/[^0-9a-fA-F]/g, '');
+        if (cleaned.length === 0) return { kind: 'empty' };
+        if (cleaned.length !== 12) {
+          return {
+            kind: 'error',
+            message: 'O MAC precisa ter 12 dígitos hexadecimais — você digitou ' + cleaned.length + '.'
+          };
+        }
+
+        const value = BigInt('0x' + cleaned);
+        const next = (value + 1n) & 0xFFFFFFFFFFFFn;
+        const wrapped = next === 0n;
+        const originalLower = cleaned.toLowerCase();
+        const nextHex = next.toString(16).padStart(12, '0');
+
+        return {
+          kind: 'ok',
+          originalHex: originalLower,
+          nextHex: nextHex,
+          formattedOriginal: formatMac(originalLower),
+          formattedNext: formatMac(nextHex),
+          changed: diffPositions(originalLower, nextHex),
+          wrapped: wrapped
+        };
+      }
+
+      function update() {
+        const raw = input.value;
+        const r = incrementMac(raw);
+
+        if (r.kind === 'empty') {
+          output.className = 'placeholder';
+          output.textContent = '—';
+          diff.classList.remove('visible');
+          wrapWarn.classList.remove('visible');
+          copyBtn.disabled = true;
+          currentResult = null;
+          return;
+        }
+
+        if (r.kind === 'error') {
+          output.className = 'error';
+          output.textContent = r.message;
+          diff.classList.remove('visible');
+          wrapWarn.classList.remove('visible');
+          copyBtn.disabled = true;
+          currentResult = null;
+          return;
+        }
+
+        output.className = '';
+        output.innerHTML = renderHighlighted(r.formattedNext, r.changed);
+
+        diffIn.innerHTML = renderHighlighted(r.formattedOriginal, r.changed);
+        diffOut.innerHTML = renderHighlighted(r.formattedNext, r.changed);
+        diff.classList.add('visible');
+
+        if (r.wrapped) wrapWarn.classList.add('visible');
+        else wrapWarn.classList.remove('visible');
+
+        copyBtn.disabled = false;
+        copyBtn.classList.remove('copied');
+        copyLabel.textContent = 'Copiar MAC';
+        currentResult = r.formattedNext;
+      }
+
+      async function doCopy() {
+        if (!currentResult || copyBtn.disabled) return;
+        try {
+          await navigator.clipboard.writeText(currentResult);
+        } catch {
+          // Fallback for older browsers / non-https contexts
+          const tmp = document.createElement('textarea');
+          tmp.value = currentResult;
+          tmp.style.position = 'fixed';
+          tmp.style.opacity = '0';
+          document.body.appendChild(tmp);
+          tmp.select();
+          try { document.execCommand('copy'); } catch { }
+          tmp.remove();
+        }
+        copyBtn.classList.add('copied');
+        copyLabel.textContent = 'Copiado!';
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyLabel.textContent = 'Copiar MAC';
+        }, 1600);
+      }
+
+      input.addEventListener('input', update);
+      input.addEventListener('paste', () => setTimeout(update, 0));
+      copyBtn.addEventListener('click', doCopy);
+
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+          e.preventDefault();
+          doCopy();
+        }
+      });
+    })();
+  </script>
+</body>
+
+</html>
