@@ -1,604 +1,399 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MAC +1 · Incrementador de MAC</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
-    rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0d0c0b;
-      --surface: #15130f;
-      --surface-2: #1d1a14;
-      --border: #2a2620;
-      --border-bright: #3a342a;
-      --text: #f5ede0;
-      --text-dim: #948a78;
-      --text-mute: #5a5448;
-      --accent: #f4a72b;
-      --accent-soft: #ffb83a;
-      --accent-glow: rgba(244, 167, 43, 0.15);
-      --error: #e8704f;
-      --success: #79c47a;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leitor MAC + SN · Provisionamento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<style>
+:root {
+  --bg:#0d0c0b; --surface:#15130f; --surface-2:#1d1a14;
+  --border:#2a2620; --border-bright:#3a342a;
+  --text:#f5ede0; --text-dim:#948a78; --text-mute:#5a5448;
+  --accent:#f4a72b; --accent-soft:#ffb83a; --accent-glow:rgba(244,167,43,.15);
+  --error:#e8704f; --success:#79c47a; --blue:#6ab0d4;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { background:var(--bg); color:var(--text); font-family:'Geist',system-ui,sans-serif; min-height:100vh; -webkit-font-smoothing:antialiased; }
+body {
+  background-image:
+    radial-gradient(ellipse 80% 40% at 30% -5%, var(--accent-glow), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 70% 105%, rgba(244,167,43,.04), transparent 60%);
+  display:flex; flex-direction:column; align-items:center; padding:46px 24px 64px;
+}
+.container { width:100%; max-width:720px; }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+.hero { text-align:center; margin-bottom:30px; }
+.eyebrow { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--accent); margin-bottom:16px; display:inline-flex; align-items:center; gap:10px; }
+.eyebrow::before { content:''; width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 12px var(--accent); animation:pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+h1 { font-family:'Instrument Serif',Georgia,serif; font-weight:400; font-size:clamp(42px,8vw,64px); line-height:.95; letter-spacing:-.02em; margin:6px 0 12px; }
+h1 em { color:var(--accent); font-style:italic; }
+.byline { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em; color:var(--text-mute); }
+.subtitle { color:var(--text-dim); font-size:14.5px; max-width:500px; margin:12px auto 0; line-height:1.55; }
+.tip { font-size:12px; color:var(--text-mute); margin-top:10px; }
+.tip code { font-family:'JetBrains Mono',monospace; color:var(--accent); background:var(--surface); padding:1px 5px; border-radius:4px; font-size:11px; border:1px solid var(--border); }
 
-    html,
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Geist', system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
+.zones { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+@media (max-width:560px){ .zones { grid-template-columns:1fr; } }
 
-    body {
-      background-image:
-        radial-gradient(ellipse 80% 40% at 30% -5%, var(--accent-glow), transparent 60%),
-        radial-gradient(ellipse 60% 40% at 70% 105%, rgba(244, 167, 43, 0.04), transparent 60%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 48px 24px;
-    }
+.zone { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:18px; transition:border-color 180ms ease; }
+.zone.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-glow); }
+.zone-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.zone-num { width:22px; height:22px; flex-shrink:0; border-radius:6px; background:var(--surface-2); border:1px solid var(--border-bright); color:var(--accent); font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.zone-title { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-dim); }
 
-    .container {
-      width: 100%;
-      max-width: 620px;
-    }
+.drop { border:1.5px dashed var(--border-bright); border-radius:12px; background:var(--surface-2); padding:22px 14px; text-align:center; cursor:pointer; transition:border-color 160ms ease, background 160ms ease; }
+.drop:hover, .zone.active .drop { border-color:var(--accent); }
+.drop.dragover { border-color:var(--accent); background:#241f17; }
+.drop.has-image { padding:8px; }
+.drop-icon { width:30px; height:30px; margin:0 auto 8px; color:var(--text-mute); }
+.drop-label { font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+.drop-hint { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-mute); margin-top:6px; letter-spacing:.04em; }
+.drop-hint kbd { background:var(--surface); border:1px solid var(--border); border-radius:3px; padding:0 4px; }
+.thumb { max-width:100%; max-height:120px; border-radius:8px; display:none; margin:0 auto; }
+.drop.has-image .thumb { display:block; }
+.drop.has-image .drop-default { display:none; }
 
-    /* Hero */
-    .hero {
-      text-align: center;
-      margin-bottom: 56px;
-    }
+.progress { display:none; margin-top:10px; }
+.progress.visible { display:block; }
+.progress-bar { height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; margin-bottom:6px; }
+.progress-fill { height:100%; width:0%; background:var(--accent); border-radius:2px; transition:width 200ms ease; box-shadow:0 0 8px var(--accent); }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-dim); text-align:center; letter-spacing:.04em; }
 
-    .eyebrow {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 22px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-    }
+.field { margin-top:12px; }
+.field-input { width:100%; background:var(--surface-2); border:1px solid var(--border); border-radius:9px; outline:none; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:500; text-align:center; letter-spacing:.05em; padding:11px 8px; caret-color:var(--accent); }
+.field-input:focus { border-color:var(--accent); }
+.field-input::placeholder { color:var(--text-mute); font-weight:400; }
+.field-note { font-size:11px; color:var(--text-mute); text-align:center; margin-top:7px; line-height:1.5; min-height:1.4em; }
+.field-note.ok { color:var(--success); }
+.field-note.error { color:var(--error); }
 
-    .eyebrow::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background: var(--accent);
-      border-radius: 50%;
-      box-shadow: 0 0 12px var(--accent);
-      animation: pulse 2s ease-in-out infinite;
-    }
+.results { margin-top:6px; }
+.result-card { background:linear-gradient(180deg,var(--surface-2),var(--surface)); border:1px solid var(--border-bright); border-radius:14px; padding:20px 24px; margin-bottom:12px; display:flex; align-items:center; gap:18px; box-shadow:0 0 40px var(--accent-glow), inset 0 1px 0 rgba(244,167,43,.06); }
+.rc-main { flex:1; min-width:0; }
+.rc-label { font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:7px; display:flex; align-items:center; gap:8px; }
+.rc-badge { font-size:8.5px; padding:1px 6px; border-radius:4px; background:var(--accent-glow); color:var(--accent); letter-spacing:.1em; }
+.rc-value { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:clamp(19px,4.4vw,26px); letter-spacing:.05em; word-break:break-all; line-height:1.2; color:var(--accent); text-shadow:0 0 14px rgba(244,167,43,.4); }
+.rc-value.empty { color:var(--text-mute); font-weight:500; text-shadow:none; }
+.copy-btn { flex-shrink:0; background:var(--accent); color:#1a1100; border:1px solid var(--accent); border-radius:9px; width:46px; height:46px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 160ms ease; }
+.copy-btn:hover:not(:disabled) { transform:translateY(-1px); background:var(--accent-soft); box-shadow:0 6px 18px rgba(244,167,43,.3); }
+.copy-btn:disabled { background:var(--surface-2); color:var(--text-mute); border-color:var(--border); cursor:not-allowed; }
+.copy-btn.copied { background:var(--success)!important; color:#0d2810!important; border-color:var(--success)!important; }
+.copy-btn svg { width:17px; height:17px; }
 
-    @keyframes pulse {
-
-      0%,
-      100% {
-        opacity: 1;
-      }
-
-      50% {
-        opacity: 0.4;
-      }
-    }
-
-    h1 {
-      font-family: 'Instrument Serif', 'Georgia', serif;
-      font-weight: 400;
-      font-size: clamp(48px, 9vw, 76px);
-      line-height: 0.95;
-      letter-spacing: -0.02em;
-      margin-bottom: 18px;
-      margin-top: 18px;
-    }
-
-    h1 em {
-      color: var(--accent);
-      font-style: italic;
-    }
-
-    .subtitle {
-      color: var(--text-dim);
-      font-size: 15px;
-      max-width: 440px;
-      margin: 0 auto;
-      line-height: 1.55;
-    }
-
-    /* Cards */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 28px 32px;
-      margin-bottom: 14px;
-    }
-
-    .label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--text-mute);
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .label .dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--text-mute);
-    }
-
-    /* Input */
-    #mac-input {
-      width: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: clamp(20px, 4.5vw, 28px);
-      font-weight: 500;
-      text-align: center;
-      letter-spacing: 0.06em;
-      padding: 6px 0;
-      caret-color: var(--accent);
-    }
-
-    #mac-input::placeholder {
-      color: var(--text-mute);
-      font-weight: 400;
-    }
-
-    /* Result card */
-    .result-card {
-      background: linear-gradient(180deg, var(--surface-2), var(--surface));
-      border-color: var(--border-bright);
-      box-shadow:
-        0 0 60px var(--accent-glow),
-        inset 0 1px 0 rgba(244, 167, 43, 0.06);
-    }
-
-    .result-card .label {
-      color: var(--accent);
-    }
-
-    .result-card .label .dot {
-      background: var(--accent);
-      box-shadow: 0 0 10px var(--accent);
-    }
-
-    #mac-output {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: clamp(24px, 5vw, 34px);
-      font-weight: 700;
-      text-align: center;
-      letter-spacing: 0.06em;
-      padding: 8px 0 4px;
-      word-break: break-all;
-      min-height: 1.4em;
-    }
-
-    #mac-output .changed {
-      color: var(--accent);
-      text-shadow: 0 0 14px rgba(244, 167, 43, 0.5);
-      position: relative;
-    }
-
-    #mac-output.placeholder {
-      color: var(--text-mute);
-      font-weight: 400;
-    }
-
-    #mac-output.error {
-      color: var(--error);
-      font-size: 15px;
-      font-family: 'Geist', sans-serif;
-      font-weight: 400;
-      letter-spacing: 0;
-    }
-
-    /* Diff strip */
-    .diff {
-      margin-top: 22px;
-      padding: 14px 18px;
-      background: rgba(0, 0, 0, 0.25);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12.5px;
-      display: none;
-    }
-
-    .diff.visible {
-      display: block;
-    }
-
-    .diff-row {
-      display: flex;
-      align-items: baseline;
-      gap: 14px;
-      padding: 3px 0;
-      color: var(--text-dim);
-    }
-
-    .diff-row .tag {
-      font-size: 9.5px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      width: 38px;
-      flex-shrink: 0;
-      color: var(--text-mute);
-    }
-
-    .diff-row .value {
-      flex: 1;
-      letter-spacing: 0.05em;
-      word-break: break-all;
-    }
-
-    .diff-row .value .changed {
-      color: var(--accent);
-      font-weight: 700;
-    }
-
-    /* Copy button */
-    .copy-row {
-      display: flex;
-      justify-content: center;
-      margin-top: 22px;
-    }
-
-    .copy-btn {
-      background: var(--accent);
-      color: #1a1100;
-      border: none;
-      font-family: 'Geist', sans-serif;
-      font-weight: 600;
-      font-size: 14px;
-      letter-spacing: 0.01em;
-      padding: 14px 30px;
-      border-radius: 10px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      transition: background 180ms ease, transform 120ms ease, box-shadow 180ms ease;
-    }
-
-    .copy-btn:hover:not(:disabled) {
-      background: var(--accent-soft);
-      transform: translateY(-1px);
-      box-shadow: 0 10px 28px rgba(244, 167, 43, 0.25);
-    }
-
-    .copy-btn:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    .copy-btn:disabled {
-      background: var(--surface-2);
-      color: var(--text-mute);
-      cursor: not-allowed;
-    }
-
-    .copy-btn.copied {
-      background: var(--success);
-      color: #0d2810;
-    }
-
-    .copy-btn svg {
-      width: 15px;
-      height: 15px;
-    }
-
-    .shortcut-hint {
-      display: block;
-      text-align: center;
-      margin-top: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10.5px;
-      color: var(--text-mute);
-      letter-spacing: 0.08em;
-    }
-
-    .shortcut-hint kbd {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 1px 6px;
-      font-family: inherit;
-      color: var(--text-dim);
-    }
-
-    /* Footer */
-    footer {
-      margin-top: 56px;
-      padding-top: 28px;
-      border-top: 1px solid var(--border);
-      color: var(--text-mute);
-      font-size: 13px;
-      line-height: 1.65;
-      text-align: center;
-    }
-
-    footer strong {
-      color: var(--text-dim);
-      font-weight: 500;
-    }
-
-    footer code {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--accent);
-      background: var(--surface);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      border: 1px solid var(--border);
-    }
-
-    /* Wrap warning */
-    .wrap-warn {
-      margin-top: 14px;
-      padding: 10px 14px;
-      background: rgba(232, 112, 79, 0.08);
-      border: 1px solid rgba(232, 112, 79, 0.3);
-      border-radius: 8px;
-      font-size: 12.5px;
-      color: var(--error);
-      text-align: center;
-      display: none;
-    }
-
-    .wrap-warn.visible {
-      display: block;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 32px 18px;
-      }
-
-      .card {
-        padding: 22px 20px;
-      }
-
-      .hero {
-        margin-bottom: 40px;
-      }
-
-      footer {
-        font-size: 12.5px;
-      }
-    }
-  </style>
+footer { margin-top:38px; padding-top:24px; border-top:1px solid var(--border); color:var(--text-mute); font-size:12.5px; line-height:1.65; text-align:center; }
+footer strong { color:var(--text-dim); font-weight:500; }
+footer code { font-family:'JetBrains Mono',monospace; color:var(--accent); background:var(--surface); padding:2px 6px; border-radius:4px; font-size:11.5px; border:1px solid var(--border); }
+</style>
 </head>
-
 <body>
-  <div class="container">
-    <header class="hero">
-      <div class="eyebrow">Provisionamento · Huawei</div>
-      <p class="subtitle">Desenvolvido por Vitor Mattos</p>
-      <h1>MAC <em>+1</em></h1>
-      <p class="subtitle">Cole o MAC original. O incremento é calculado em hexadecimal, do jeito certo.</p>
-    </header>
+<div class="container">
+  <header class="hero">
+    <div class="eyebrow">Provisionamento · Huawei ONT</div>
+    <div class="byline">Desenvolvido por Vitor Mattos</div>
+    <h1>Leitor <em>MAC · SN</em></h1>
+    <p class="subtitle">Envie um print do <strong>MAC</strong> e outro do <strong>SN</strong>. A aplicação lê os dois, entrega o MAC para cadastrar (+1) e o serial montado.</p>
+    <p class="tip">Dica: recorte a <strong>linha de texto</strong> (ex.: <code>MAC:F0C8B5E7DDC9-D2(10)</code>) — evite o código de barras, que atrapalha a leitura.</p>
+  </header>
 
-    <div class="card">
-      <div class="label"><span class="dot"></span> MAC ORIGINAL</div>
-      <input type="text" id="mac-input" placeholder="98:48:74:D8:DE:9C" autocomplete="off" spellcheck="false"
-        autocapitalize="characters" autofocus>
-    </div>
-
-    <div class="card result-card">
-      <div class="label"><span class="dot"></span> MAC INCREMENTADO</div>
-      <div id="mac-output" class="placeholder">—</div>
-
-      <div class="diff" id="diff">
-        <div class="diff-row">
-          <span class="tag">De</span>
-          <span class="value" id="diff-in"></span>
+  <div class="zones">
+    <!-- ZONE MAC -->
+    <div class="zone" id="zone-mac" data-kind="mac">
+      <div class="zone-head"><span class="zone-num">1</span><span class="zone-title">Print do MAC</span></div>
+      <div class="drop" id="drop-mac">
+        <div class="drop-default">
+          <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <div class="drop-label">Cole, arraste ou clique</div>
+          <div class="drop-hint"><kbd>Ctrl</kbd>+<kbd>V</kbd> cola aqui</div>
         </div>
-        <div class="diff-row">
-          <span class="tag">Para</span>
-          <span class="value" id="diff-out"></span>
-        </div>
+        <img class="thumb" id="thumb-mac" alt="prévia do MAC">
+        <input type="file" id="file-mac" accept="image/*" hidden>
       </div>
-
-      <div class="copy-row">
-        <button id="copy-btn" class="copy-btn" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-            stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-          <span id="copy-label">Copiar MAC</span>
-        </button>
-      </div>
-      <span class="shortcut-hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> para copiar</span>
-
-      <div class="wrap-warn" id="wrap-warn">
-        ⚠ O MAC era <code>FF:FF:FF:FF:FF:FF</code> e voltou para <code>00:00:00:00:00:00</code>. Verifique com o
-        supervisor antes de usar.
+      <div class="progress" id="prog-mac"><div class="progress-bar"><div class="progress-fill" id="fill-mac"></div></div><div class="progress-label" id="plabel-mac">Lendo…</div></div>
+      <div class="field">
+        <input class="field-input" type="text" id="mac-edit" placeholder="F0:C8:B5:E7:DD:C9" autocomplete="off" spellcheck="false" autocapitalize="characters">
+        <div class="field-note" id="mac-note">Confira / corrija o MAC lido.</div>
       </div>
     </div>
 
-    <footer>
-      O incremento é feito em <strong>hexadecimal de 48 bits</strong>. Quando o último dígito é <code>F</code>, o dígito
-      à esquerda também muda — exatamente como <code>...0F → ...10</code>.
-    </footer>
+    <!-- ZONE SN -->
+    <div class="zone" id="zone-sn" data-kind="sn">
+      <div class="zone-head"><span class="zone-num">2</span><span class="zone-title">Print do SN</span></div>
+      <div class="drop" id="drop-sn">
+        <div class="drop-default">
+          <svg class="drop-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+          <div class="drop-label">Cole, arraste ou clique</div>
+          <div class="drop-hint"><kbd>Ctrl</kbd>+<kbd>V</kbd> cola aqui</div>
+        </div>
+        <img class="thumb" id="thumb-sn" alt="prévia do SN">
+        <input type="file" id="file-sn" accept="image/*" hidden>
+      </div>
+      <div class="progress" id="prog-sn"><div class="progress-bar"><div class="progress-fill" id="fill-sn"></div></div><div class="progress-label" id="plabel-sn">Lendo…</div></div>
+      <div class="field">
+        <input class="field-input" type="text" id="sn-edit" placeholder="HWTCB5495DB5" autocomplete="off" spellcheck="false" autocapitalize="characters">
+        <div class="field-note" id="sn-note">Confira / corrija o SN gerado.</div>
+      </div>
+    </div>
   </div>
 
-  <script>
-    (function () {
-      const input = document.getElementById('mac-input');
-      const output = document.getElementById('mac-output');
-      const copyBtn = document.getElementById('copy-btn');
-      const copyLabel = document.getElementById('copy-label');
-      const diff = document.getElementById('diff');
-      const diffIn = document.getElementById('diff-in');
-      const diffOut = document.getElementById('diff-out');
-      const wrapWarn = document.getElementById('wrap-warn');
+  <div class="results">
+    <div class="result-card">
+      <div class="rc-main">
+        <div class="rc-label">MAC para cadastrar <span class="rc-badge">+1</span></div>
+        <div class="rc-value empty" id="out-mac">—</div>
+      </div>
+      <button class="copy-btn" data-copy="out-mac" disabled title="Copiar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+    <div class="result-card">
+      <div class="rc-main">
+        <div class="rc-label">Serial (SN)</div>
+        <div class="rc-value empty" id="out-sn">—</div>
+      </div>
+      <button class="copy-btn" data-copy="out-sn" disabled title="Copiar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>
+  </div>
 
-      let currentResult = null;
+  <footer>
+    <strong>MAC para cadastrar</strong> = MAC da etiqueta <strong>+1</strong> (hexadecimal, com o carry do <code>F → 10</code>). <strong>Serial</strong> = pega os 16 dígitos do campo SN, troca os 8 primeiros por <code>HWTC</code> e mantém os 8 últimos. Tudo roda no navegador.
+  </footer>
+</div>
 
-      // Always output in the canonical Huawei format: XX:XX:XX:XX:XX:XX (uppercase)
-      function formatMac(hex) {
-        hex = hex.toUpperCase();
-        const parts = [];
-        for (let i = 0; i < hex.length; i += 2) {
-          parts.push(hex.substring(i, i + 2));
-        }
-        return parts.join(':');
+<script>
+(function () {
+  let worker = null;
+  let activeKind = 'mac';
+
+  /* ---------- Núcleo ---------- */
+  function extractMac(text) {
+    const up = String(text).toUpperCase();
+    const tokens = up.split(/[^0-9A-F]+/).filter(Boolean);
+    let c = tokens.find(t => t.length === 12);
+    if (c) return c;
+    const m = up.match(/([0-9A-F]{12})(?=\s*-)/);
+    if (m) return m[1];
+    for (const t of tokens) {
+      if (t.length >= 13 && t.length <= 16) {
+        let s = t;
+        if (s.startsWith('AC') && s.length > 12) s = s.slice(2); // remove rótulo "MAC"
+        if (s.length >= 12) return s.slice(0, 12);
       }
+    }
+    return null;
+  }
+  function extractSN(text) {
+    const up = String(text).toUpperCase();
+    const allHex = up.replace(/[^0-9A-F]/g, '');     // junta todo o hex
+    const i = allHex.indexOf('48575443');            // "HWTC" em ASCII hex
+    if (i !== -1 && allHex.length >= i + 16) return 'HWTC' + allHex.slice(i + 8, i + 16);
+    const m = up.match(/HWTC\s*([0-9A-F]{8})/);
+    if (m) return 'HWTC' + m[1];
+    if (allHex.length >= 8) return 'HWTC' + allHex.slice(-8); // zona é sabidamente SN
+    return null;
+  }
+  function formatMac(hex) {
+    hex = hex.toUpperCase();
+    const p = [];
+    for (let i = 0; i < hex.length; i += 2) p.push(hex.substring(i, i + 2));
+    return p.join(':');
+  }
+  function incrementMac(hex) {
+    const v = BigInt('0x' + hex);
+    const n = (v + 1n) & 0xFFFFFFFFFFFFn;
+    return formatMac(n.toString(16).padStart(12, '0'));
+  }
+  const cleanHex = s => String(s).replace(/[^0-9a-fA-F]/g, '').toUpperCase();
 
-      function diffPositions(a, b) {
-        const set = new Set();
-        for (let i = 0; i < a.length; i++) {
-          if (a[i] !== b[i]) set.add(i);
-        }
-        return set;
+  /* ---------- Elementos ---------- */
+  const macEdit = document.getElementById('mac-edit');
+  const snEdit = document.getElementById('sn-edit');
+  const macNote = document.getElementById('mac-note');
+  const snNote = document.getElementById('sn-note');
+  const outMac = document.getElementById('out-mac');
+  const outSn = document.getElementById('out-sn');
+
+  function setCopyEnabled(id, on) {
+    const btn = document.querySelector('.copy-btn[data-copy="' + id + '"]');
+    if (btn) btn.disabled = !on;
+  }
+
+  function renderMac() {
+    const hex = cleanHex(macEdit.value);
+    if (hex.length === 0) {
+      outMac.textContent = '—'; outMac.classList.add('empty');
+      macNote.textContent = 'Confira / corrija o MAC lido.'; macNote.className = 'field-note';
+      setCopyEnabled('out-mac', false); return;
+    }
+    if (hex.length !== 12) {
+      outMac.textContent = '—'; outMac.classList.add('empty');
+      macNote.textContent = 'Precisa de 12 dígitos — você tem ' + hex.length + '.'; macNote.className = 'field-note error';
+      setCopyEnabled('out-mac', false); return;
+    }
+    outMac.textContent = incrementMac(hex); outMac.classList.remove('empty');
+    macNote.textContent = 'Lido ' + formatMac(hex) + ' · cadastre o +1.'; macNote.className = 'field-note ok';
+    setCopyEnabled('out-mac', true);
+  }
+  function renderSN() {
+    const val = snEdit.value.trim().toUpperCase().replace(/\s+/g, '');
+    if (val.length === 0) {
+      outSn.textContent = '—'; outSn.classList.add('empty');
+      snNote.textContent = 'Confira / corrija o SN gerado.'; snNote.className = 'field-note';
+      setCopyEnabled('out-sn', false); return;
+    }
+    const ok = /^HWTC[0-9A-F]{8}$/.test(val);
+    outSn.textContent = val; outSn.classList.remove('empty');
+    setCopyEnabled('out-sn', true);
+    snNote.textContent = ok ? 'Serial válido (HWTC + 8).' : 'Esperado HWTC + 8 dígitos.';
+    snNote.className = ok ? 'field-note ok' : 'field-note error';
+  }
+  macEdit.addEventListener('input', renderMac);
+  snEdit.addEventListener('input', renderSN);
+
+  /* ---------- Pré-processamento (amplia + cinza + contraste) ---------- */
+  async function preprocess(blob) {
+    try {
+      const bmp = await createImageBitmap(blob);
+      const targetW = 1400;
+      const scale = bmp.width < targetW ? Math.min(3, targetW / bmp.width) : 1;
+      const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(bmp, 0, 0, w, h);
+      const im = ctx.getImageData(0, 0, w, h), d = im.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let g = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        g = (g - 128) * 1.45 + 128;
+        d[i] = d[i + 1] = d[i + 2] = g < 0 ? 0 : g > 255 ? 255 : g;
       }
+      ctx.putImageData(im, 0, 0);
+      return cv;
+    } catch (e) { return blob; }
+  }
 
-      function renderHighlighted(formatted, changedHexIndices) {
-        let hexIdx = 0;
-        let html = '';
-        for (const ch of formatted) {
-          if (/[0-9a-fA-F]/.test(ch)) {
-            if (changedHexIndices.has(hexIdx)) {
-              html += '<span class="changed">' + ch + '</span>';
-            } else {
-              html += ch;
+  /* ---------- OCR por tipo ---------- */
+  async function runOCR(blob, kind) {
+    const prog = document.getElementById('prog-' + kind);
+    const fill = document.getElementById('fill-' + kind);
+    const plabel = document.getElementById('plabel-' + kind);
+    const note = kind === 'mac' ? macNote : snNote;
+
+    prog.classList.add('visible'); fill.style.width = '0%'; plabel.textContent = 'Carregando…';
+
+    if (typeof Tesseract === 'undefined') {
+      prog.classList.remove('visible');
+      note.textContent = 'OCR indisponível (sem internet?). Digite manualmente.'; note.className = 'field-note error';
+      return;
+    }
+    try {
+      if (!worker) {
+        worker = await Tesseract.createWorker('eng', 1, {
+          logger: m => {
+            if (m.status === 'recognizing text') {
+              const p = Math.round(m.progress * 100);
+              fill.style.width = p + '%'; plabel.textContent = 'Lendo… ' + p + '%';
             }
-            hexIdx++;
-          } else {
-            html += ch;
           }
-        }
-        return html;
+        });
       }
-
-      function incrementMac(raw) {
-        const cleaned = raw.replace(/[^0-9a-fA-F]/g, '');
-        if (cleaned.length === 0) return { kind: 'empty' };
-        if (cleaned.length !== 12) {
-          return {
-            kind: 'error',
-            message: 'O MAC precisa ter 12 dígitos hexadecimais — você digitou ' + cleaned.length + '.'
-          };
-        }
-
-        const value = BigInt('0x' + cleaned);
-        const next = (value + 1n) & 0xFFFFFFFFFFFFn;
-        const wrapped = next === 0n;
-        const originalLower = cleaned.toLowerCase();
-        const nextHex = next.toString(16).padStart(12, '0');
-
-        return {
-          kind: 'ok',
-          originalHex: originalLower,
-          nextHex: nextHex,
-          formattedOriginal: formatMac(originalLower),
-          formattedNext: formatMac(nextHex),
-          changed: diffPositions(originalLower, nextHex),
-          wrapped: wrapped
-        };
-      }
-
-      function update() {
-        const raw = input.value;
-        const r = incrementMac(raw);
-
-        if (r.kind === 'empty') {
-          output.className = 'placeholder';
-          output.textContent = '—';
-          diff.classList.remove('visible');
-          wrapWarn.classList.remove('visible');
-          copyBtn.disabled = true;
-          currentResult = null;
-          return;
-        }
-
-        if (r.kind === 'error') {
-          output.className = 'error';
-          output.textContent = r.message;
-          diff.classList.remove('visible');
-          wrapWarn.classList.remove('visible');
-          copyBtn.disabled = true;
-          currentResult = null;
-          return;
-        }
-
-        output.className = '';
-        output.innerHTML = renderHighlighted(r.formattedNext, r.changed);
-
-        diffIn.innerHTML = renderHighlighted(r.formattedOriginal, r.changed);
-        diffOut.innerHTML = renderHighlighted(r.formattedNext, r.changed);
-        diff.classList.add('visible');
-
-        if (r.wrapped) wrapWarn.classList.add('visible');
-        else wrapWarn.classList.remove('visible');
-
-        copyBtn.disabled = false;
-        copyBtn.classList.remove('copied');
-        copyLabel.textContent = 'Copiar MAC';
-        currentResult = r.formattedNext;
-      }
-
-      async function doCopy() {
-        if (!currentResult || copyBtn.disabled) return;
-        try {
-          await navigator.clipboard.writeText(currentResult);
-        } catch {
-          // Fallback for older browsers / non-https contexts
-          const tmp = document.createElement('textarea');
-          tmp.value = currentResult;
-          tmp.style.position = 'fixed';
-          tmp.style.opacity = '0';
-          document.body.appendChild(tmp);
-          tmp.select();
-          try { document.execCommand('copy'); } catch { }
-          tmp.remove();
-        }
-        copyBtn.classList.add('copied');
-        copyLabel.textContent = 'Copiado!';
-        setTimeout(() => {
-          copyBtn.classList.remove('copied');
-          copyLabel.textContent = 'Copiar MAC';
-        }, 1600);
-      }
-
-      input.addEventListener('input', update);
-      input.addEventListener('paste', () => setTimeout(update, 0));
-      copyBtn.addEventListener('click', doCopy);
-
-      document.addEventListener('keydown', (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-          e.preventDefault();
-          doCopy();
-        }
+      await worker.setParameters({
+        tessedit_char_whitelist: '0123456789ABCDEFabcdef:().- ',
+        tessedit_pageseg_mode: '6'
       });
-    })();
-  </script>
-</body>
 
+      const input = await preprocess(blob);
+      const { data } = await worker.recognize(input);
+      prog.classList.remove('visible');
+
+      if (kind === 'mac') {
+        const mac = extractMac(data.text);
+        if (mac) { macEdit.value = formatMac(mac); renderMac(); }
+        else {
+          const shown = (data.text.trim().slice(0, 40).replace(/[<>]/g, '') || '(vazio)');
+          macNote.textContent = 'Não achei o MAC. Lido: "' + shown + '". Recorte só a linha do MAC ou digite.';
+          macNote.className = 'field-note error';
+        }
+      } else {
+        const sn = extractSN(data.text);
+        if (sn) { snEdit.value = sn; renderSN(); }
+        else {
+          const shown = (data.text.trim().slice(0, 40).replace(/[<>]/g, '') || '(vazio)');
+          snNote.textContent = 'Não achei o SN. Lido: "' + shown + '". Recorte só a linha do SN ou digite.';
+          snNote.className = 'field-note error';
+        }
+      }
+    } catch (err) {
+      prog.classList.remove('visible');
+      note.textContent = 'Erro na leitura. Tente outro print ou digite.'; note.className = 'field-note error';
+    }
+  }
+
+  /* ---------- Entrada de imagem por zona ---------- */
+  function handleImage(blob, kind) {
+    const thumb = document.getElementById('thumb-' + kind);
+    const drop = document.getElementById('drop-' + kind);
+    thumb.src = URL.createObjectURL(blob);
+    drop.classList.add('has-image');
+    runOCR(blob, kind);
+  }
+
+  function wireZone(kind) {
+    const zone = document.getElementById('zone-' + kind);
+    const drop = document.getElementById('drop-' + kind);
+    const file = document.getElementById('file-' + kind);
+
+    function setActive() {
+      activeKind = kind;
+      document.getElementById('zone-mac').classList.toggle('active', kind === 'mac');
+      document.getElementById('zone-sn').classList.toggle('active', kind === 'sn');
+    }
+    zone.addEventListener('mousedown', setActive);
+    drop.addEventListener('click', () => { setActive(); file.click(); });
+    file.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleImage(f, kind); });
+    drop.addEventListener('dragover', e => { e.preventDefault(); setActive(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', e => {
+      e.preventDefault(); drop.classList.remove('dragover'); setActive();
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) handleImage(f, kind);
+    });
+  }
+  wireZone('mac');
+  wireZone('sn');
+  document.getElementById('zone-mac').classList.add('active'); // MAC ativo por padrão
+
+  // Colar (Ctrl+V) vai para a zona ativa
+  window.addEventListener('paste', e => {
+    const items = e.clipboardData && e.clipboardData.items; if (!items) return;
+    for (const it of items) {
+      if (it.type.startsWith('image/')) { handleImage(it.getAsFile(), activeKind); break; }
+    }
+  });
+
+  /* ---------- Copiar ---------- */
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (btn.disabled) return;
+      const txt = document.getElementById(btn.dataset.copy).textContent;
+      if (!txt || txt === '—') return;
+      try { await navigator.clipboard.writeText(txt); }
+      catch {
+        const t = document.createElement('textarea'); t.value = txt; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove();
+      }
+      const original = btn.innerHTML;
+      btn.classList.add('copied');
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = original; }, 1500);
+    });
+  });
+})();
+</script>
+</body>
 </html>
